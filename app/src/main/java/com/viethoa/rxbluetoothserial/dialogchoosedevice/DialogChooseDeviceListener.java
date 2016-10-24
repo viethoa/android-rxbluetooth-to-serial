@@ -1,4 +1,4 @@
-package com.viethoa.rxbluetoothserial.listeners;
+package com.viethoa.rxbluetoothserial.dialogchoosedevice;
 
 import android.bluetooth.BluetoothDevice;
 

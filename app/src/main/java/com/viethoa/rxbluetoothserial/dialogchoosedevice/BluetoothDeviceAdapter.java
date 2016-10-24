@@ -1,4 +1,4 @@
-package com.viethoa.rxbluetoothserial;
+package com.viethoa.rxbluetoothserial.dialogchoosedevice;
 
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
@@ -8,6 +8,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.viethoa.rxbluetoothserial.R;
 import com.viethoa.rxbluetoothserial.base.BaseArrayAdapter;
 
 import java.util.List;

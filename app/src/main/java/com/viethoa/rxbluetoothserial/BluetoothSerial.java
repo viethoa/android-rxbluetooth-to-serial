@@ -7,8 +7,8 @@ import android.content.Context;
 import android.os.Build;
 import android.util.Log;
 
-import com.viethoa.rxbluetoothserial.listeners.BluetoothSerialListener;
-import com.viethoa.rxbluetoothserial.listeners.SPPServiceListener;
+import com.viethoa.rxbluetoothserial.spp.SPPServiceListener;
+import com.viethoa.rxbluetoothserial.spp.SPPService;
 
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;

@@ -1,4 +1,4 @@
-package com.viethoa.rxbluetoothserial.listeners;
+package com.viethoa.rxbluetoothserial;
 
 import android.bluetooth.BluetoothDevice;
 

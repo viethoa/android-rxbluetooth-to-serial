@@ -1,10 +1,10 @@
-package com.viethoa.rxbluetoothserial;
+package com.viethoa.rxbluetoothserial.spp;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 
+import com.viethoa.rxbluetoothserial.BluetoothSerialState;
 import com.viethoa.rxbluetoothserial.cores.Logger;
-import com.viethoa.rxbluetoothserial.listeners.SPPServiceListener;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,7 +15,7 @@ import java.util.UUID;
 /**
  * Created by VietHoa on 23/10/2016.
  */
-class SPPService {
+public class SPPService {
 
     private static final String TAG = SPPService.class.getSimpleName();
     private static final UUID UUID_SPP = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
@@ -26,7 +26,7 @@ class SPPService {
     private ConnectedThread mConnectedThread;
     private SPPServiceListener mSppServiceListener;
 
-    SPPService(SPPServiceListener listener) {
+    public SPPService(SPPServiceListener listener) {
         mSppServiceListener = listener;
         mCurrentState = BluetoothSerialState.DISCONNECTED;
     }
@@ -35,7 +35,7 @@ class SPPService {
     // Properties
     //----------------------------------------------------------------------------------------------
 
-    synchronized void connect(BluetoothDevice device) {
+    public synchronized void connect(BluetoothDevice device) {
         Logger.d(TAG, String.format("connect to device: %s", device));
         if (mCurrentState == BluetoothSerialState.CONNECTING) {
             resetConnectThread();
@@ -49,13 +49,13 @@ class SPPService {
         setState(BluetoothSerialState.CONNECTING);
     }
 
-    synchronized void disconnect() {
+    public synchronized void disconnect() {
         Logger.d(TAG, "disconnect");
         resetThreads();
         setState(BluetoothSerialState.DISCONNECTED);
     }
 
-    synchronized void write(byte[] data) {
+    public synchronized void write(byte[] data) {
         ConnectedThread connectedThread = null;
         synchronized (this) {
             if (mCurrentState == BluetoothSerialState.CONNECTED) {
@@ -67,7 +67,7 @@ class SPPService {
         }
     }
 
-    synchronized int getState() {
+    public synchronized int getState() {
         return mCurrentState;
     }
 
