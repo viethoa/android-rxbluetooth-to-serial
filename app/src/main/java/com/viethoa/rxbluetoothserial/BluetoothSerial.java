@@ -5,9 +5,10 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.os.Build;
-import android.os.Handler;
-import android.os.Message;
 import android.util.Log;
+
+import com.viethoa.rxbluetoothserial.listeners.BluetoothSerialListener;
+import com.viethoa.rxbluetoothserial.listeners.SPPServiceListener;
 
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
@@ -22,13 +23,11 @@ public class BluetoothSerial implements SPPServiceListener {
     private static final byte[] CRLF = {0x0D, 0x0A};
 
     private BluetoothAdapter mAdapter;
-    private Set<BluetoothDevice> mPairedDevices;
+    private Set<android.bluetooth.BluetoothDevice> mPairedDevices;
 
     private SPPService mService;
+    private BluetoothDevice mConnectedDevice;
     private BluetoothSerialListener mListener;
-
-    private String mConnectedDeviceName;
-    private String mConnectedDeviceAddress;
 
     /**
      * Init
@@ -120,21 +119,21 @@ public class BluetoothSerial implements SPPServiceListener {
      */
     public void connect(String address) {
         try {
-            BluetoothDevice device = mAdapter.getRemoteDevice(address);
+            android.bluetooth.BluetoothDevice device = mAdapter.getRemoteDevice(address);
             if (device == null) {
                 mListener.onBluetoothDeviceDisconnected();
                 return;
             }
 
             mListener.onConnectingBluetoothDevice();
-            if (device.getBondState() != BluetoothDevice.BOND_BONDED) {
+            if (device.getBondState() != android.bluetooth.BluetoothDevice.BOND_BONDED) {
                 Method method = device.getClass().getMethod("createBond", (Class[]) null);
                 method.invoke(device, (Object[]) null);
             } else {
                 connect(device);
             }
         } catch (Exception e) {
-            Log.e(TAG, "Device not found!");
+            Log.e(TAG, "BluetoothDevice not found!");
         }
     }
 
@@ -143,7 +142,7 @@ public class BluetoothSerial implements SPPServiceListener {
      *
      * @param device A remote Bluetooth device.
      */
-    public void connect(BluetoothDevice device) {
+    public void connect(android.bluetooth.BluetoothDevice device) {
         if (mService != null) {
             mService.connect(device);
         }
@@ -203,8 +202,7 @@ public class BluetoothSerial implements SPPServiceListener {
             mAdapter.cancelDiscovery();
         }
 
-        mConnectedDeviceName = "";
-        mConnectedDeviceAddress = "";
+        mConnectedDevice = null;
     }
 
     /**
@@ -233,20 +231,26 @@ public class BluetoothSerial implements SPPServiceListener {
      * Get connected remote bluetooth device name.
      */
     public String getConnectedDeviceName() {
-        return mConnectedDeviceName;
+        if (mConnectedDevice == null) {
+            return null;
+        }
+        return mConnectedDevice.getName();
     }
 
     /**
      * Get the MAC address of the connected remote Bluetooth device.
      */
     public String getConnectedDeviceAddress() {
-        return mConnectedDeviceAddress;
+        if (mConnectedDevice == null) {
+            return null;
+        }
+        return mConnectedDevice.getAddress();
     }
 
     /**
      * Get the paired Bluetooth devices of this device.
      */
-    public Set<BluetoothDevice> getPairedDevices() {
+    public Set<android.bluetooth.BluetoothDevice> getPairedDevices() {
         return mPairedDevices;
     }
 
@@ -257,7 +261,7 @@ public class BluetoothSerial implements SPPServiceListener {
         if (mPairedDevices != null) {
             String[] name = new String[mPairedDevices.size()];
             int i = 0;
-            for (BluetoothDevice d : mPairedDevices) {
+            for (android.bluetooth.BluetoothDevice d : mPairedDevices) {
                 name[i] = d.getName();
                 i++;
             }
@@ -273,7 +277,7 @@ public class BluetoothSerial implements SPPServiceListener {
         if (mPairedDevices != null) {
             String[] address = new String[mPairedDevices.size()];
             int i = 0;
-            for (BluetoothDevice d : mPairedDevices) {
+            for (android.bluetooth.BluetoothDevice d : mPairedDevices) {
                 address[i] = d.getAddress();
                 i++;
             }
@@ -285,12 +289,11 @@ public class BluetoothSerial implements SPPServiceListener {
     /**
      * SPP Service listener: will notify about connection changed
      */
-
     @Override
     public void onMessageStateChange(@BluetoothSerialState int state) {
         switch (state) {
             case BluetoothSerialState.CONNECTED:
-                mListener.onBluetoothDeviceConnected(mConnectedDeviceName, mConnectedDeviceAddress);
+                mListener.onBluetoothDeviceConnected(mConnectedDevice);
                 break;
             case BluetoothSerialState.CONNECTING:
                 mListener.onConnectingBluetoothDevice();
@@ -314,8 +317,7 @@ public class BluetoothSerial implements SPPServiceListener {
     }
 
     @Override
-    public void onDeviceInfo(String deviceName, String deviceAddress) {
-        mConnectedDeviceName = deviceName;
-        mConnectedDeviceAddress = deviceAddress;
+    public void onDeviceInfo(BluetoothDevice device) {
+        mConnectedDevice = device;
     }
 }

@@ -1,10 +1,8 @@
-package com.viethoa.rxbluetoothserial.Cores;
+package com.viethoa.rxbluetoothserial.cores;
 
 import android.support.compat.BuildConfig;
 import android.text.TextUtils;
 import android.util.Log;
-
-import org.w3c.dom.Text;
 
 /**
  * Created by VietHoa on 23/10/2016.

@@ -2,11 +2,9 @@ package com.viethoa.rxbluetoothserial;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
 
-import com.viethoa.rxbluetoothserial.Cores.Logger;
+import com.viethoa.rxbluetoothserial.cores.Logger;
+import com.viethoa.rxbluetoothserial.listeners.SPPServiceListener;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -162,7 +160,7 @@ class SPPService {
             mConnectedThread.start();
 
             setState(BluetoothSerialState.CONNECTED);
-            mSppServiceListener.onDeviceInfo(device.getName(), device.getAddress());
+            mSppServiceListener.onDeviceInfo(device);
         }
 
         void cancel() {

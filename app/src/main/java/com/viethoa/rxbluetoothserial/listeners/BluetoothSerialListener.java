@@ -1,4 +1,6 @@
-package com.viethoa.rxbluetoothserial;
+package com.viethoa.rxbluetoothserial.listeners;
+
+import android.bluetooth.BluetoothDevice;
 
 /**
  * Created by VietHoa on 23/10/2016.
@@ -28,7 +30,7 @@ public interface BluetoothSerialListener {
     /**
      * Connected to a remote Bluetooth device.
      */
-    void onBluetoothDeviceConnected(String name, String address);
+    void onBluetoothDeviceConnected(BluetoothDevice device);
 
     /**
      * Specified message is read from the serial port.
