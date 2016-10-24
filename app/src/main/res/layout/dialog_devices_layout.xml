@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="@dimen/space_16_dp">
+
+    <TextView
+        android:id="@+id/tv_device_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Bluetooth Device Name"
+        android:textColor="@color/colorDark"
+        android:textSize="@dimen/font_16_sp" />
+
+    <TextView
+        android:id="@+id/tv_device_address"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="00:00:00:00:00:FF"
+        android:textColor="@color/colorLight"
+        android:textSize="@dimen/font_14_sp" />
+
+</LinearLayout>
