@@ -5,7 +5,6 @@ import android.bluetooth.BluetoothSocket;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.text.TextUtils;
 
 import com.viethoa.rxbluetoothserial.Cores.Logger;
 
@@ -25,12 +24,12 @@ class SPPService {
 
     @BluetoothSerialState
     private int mCurrentState;
-    private Handler mHandler;
     private ConnectThread mConnectThread;
     private ConnectedThread mConnectedThread;
+    private SPPServiceListener mSppServiceListener;
 
-    SPPService(Handler handler) {
-        mHandler = handler;
+    SPPService(SPPServiceListener listener) {
+        mSppServiceListener = listener;
         mCurrentState = BluetoothSerialState.DISCONNECTED;
     }
 
@@ -78,11 +77,11 @@ class SPPService {
     // Settings
     //----------------------------------------------------------------------------------------------
 
-    private synchronized void setState(int state) {
+    private synchronized void setState(@BluetoothSerialState int state) {
         Logger.d(TAG, "setState() " + mCurrentState + " -> " + state);
 
         mCurrentState = state;
-        mHandler.obtainMessage(BluetoothSerial.MESSAGE_STATE_CHANGE, state, -1).sendToTarget();
+        mSppServiceListener.onMessageStateChange(state);
     }
 
     private synchronized void resetThreads() {
@@ -162,14 +161,8 @@ class SPPService {
             mConnectedThread = new ConnectedThread(socket);
             mConnectedThread.start();
 
-            Message msg = mHandler.obtainMessage(BluetoothSerial.MESSAGE_DEVICE_INFO);
-            Bundle bundle = new Bundle();
-            bundle.putString(BluetoothSerial.KEY_DEVICE_NAME, device.getName());
-            bundle.putString(BluetoothSerial.KEY_DEVICE_ADDRESS, device.getAddress());
-            msg.setData(bundle);
-            mHandler.sendMessage(msg);
-
             setState(BluetoothSerialState.CONNECTED);
+            mSppServiceListener.onDeviceInfo(device.getName(), device.getAddress());
         }
 
         void cancel() {
@@ -208,16 +201,14 @@ class SPPService {
         }
 
         public void run() {
-            byte[] data = new byte[2048];
+            byte[] data = new byte[1024];
             int bytes;
 
             while (true) {
                 try {
                     bytes = mInputStream.read(data);
-                    String messageStr = new String(data, 0, bytes, Charset.forName("ISO-8859-1"));
-                    Message messageObj = mHandler.obtainMessage(BluetoothSerial.MESSAGE_READ, bytes, -1,
-                            messageStr.getBytes(Charset.forName("ISO-8859-1")));
-                    messageObj.sendToTarget();
+                    String message = new String(data, 0, bytes, Charset.forName("ISO-8859-1"));
+                    mSppServiceListener.onMessageRead(data, message);
                 } catch (IOException e) {
                     Logger.e(TAG, e.getMessage());
                     cancel();
@@ -234,7 +225,8 @@ class SPPService {
 
             try {
                 mOutputStream.write(data);
-                mHandler.obtainMessage(BluetoothSerial.MESSAGE_WRITE, -1, -1, data).sendToTarget();
+                String message = new String(data, 0, data.length, Charset.forName("ISO-8859-1"));
+                mSppServiceListener.onMessageWrite(data, message);
             } catch (IOException e) {
                 Logger.e(TAG, e.getMessage());
             }

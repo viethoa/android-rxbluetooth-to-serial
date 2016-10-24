@@ -16,18 +16,9 @@ import java.util.Set;
 /**
  * Created by VietHoa on 23/10/2016.
  */
-public class BluetoothSerial {
+public class BluetoothSerial implements SPPServiceListener {
 
     private static final String TAG = BluetoothSerial.class.getSimpleName();
-
-    protected static final int MESSAGE_STATE_CHANGE = 1;
-    protected static final int MESSAGE_READ = 2;
-    protected static final int MESSAGE_WRITE = 3;
-    protected static final int MESSAGE_DEVICE_INFO = 4;
-
-    static final String KEY_DEVICE_NAME = "DEVICE_NAME";
-    static final String KEY_DEVICE_ADDRESS = "DEVICE_ADDRESS";
-
     private static final byte[] CRLF = {0x0D, 0x0A};
 
     private BluetoothAdapter mAdapter;
@@ -36,19 +27,18 @@ public class BluetoothSerial {
     private SPPService mService;
     private BluetoothSerialListener mListener;
 
-    private String mConnectedDeviceName, mConnectedDeviceAddress;
+    private String mConnectedDeviceName;
+    private String mConnectedDeviceAddress;
 
     /**
-     * Constructor.
-     *
-     * @param context  The {@link android.content.Context} to use.
+     * Init
      */
     public BluetoothSerial(Context context, BluetoothSerialListener listener) {
         mAdapter = getAdapter(context);
         mListener = listener;
     }
 
-    public static BluetoothAdapter getAdapter(Context context) {
+    static BluetoothAdapter getAdapter(Context context) {
         BluetoothAdapter bluetoothAdapter = null;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
             BluetoothManager bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
@@ -60,12 +50,18 @@ public class BluetoothSerial {
         return bluetoothAdapter;
     }
 
+    /**
+     * Discover bluetooth devices
+     */
     public void startDiscover() {
         if (mAdapter != null) {
             mAdapter.startDiscovery();
         }
     }
 
+    /**
+     * Stop discover bluetooth devices
+     */
     public void stopDiscover() {
         if (mAdapter != null && mAdapter.isDiscovering()) {
             mAdapter.cancelDiscovery();
@@ -83,14 +79,12 @@ public class BluetoothSerial {
         Log.d(TAG, "Create SPPService");
         mPairedDevices = mAdapter.getBondedDevices();
         if (mService == null) {
-            mService = new SPPService(mHandler);
+            mService = new SPPService(this);
         }
     }
 
     /**
      * Return true if Bluetooth is currently enabled and ready for use.
-     *
-     * @return true if this device's adapter is turned on
      */
     public boolean isBluetoothEnabled() {
         return mAdapter.isEnabled();
@@ -208,6 +202,9 @@ public class BluetoothSerial {
         if (mAdapter != null) {
             mAdapter.cancelDiscovery();
         }
+
+        mConnectedDeviceName = "";
+        mConnectedDeviceAddress = "";
     }
 
     /**
@@ -233,9 +230,7 @@ public class BluetoothSerial {
     }
 
     /**
-     * Get the name of the connected remote Bluetooth device.
-     *
-     * @return the name of the connected device
+     * Get connected remote bluetooth device name.
      */
     public String getConnectedDeviceName() {
         return mConnectedDeviceName;
@@ -243,8 +238,6 @@ public class BluetoothSerial {
 
     /**
      * Get the MAC address of the connected remote Bluetooth device.
-     *
-     * @return the MAC address of the connected device
      */
     public String getConnectedDeviceAddress() {
         return mConnectedDeviceAddress;
@@ -252,8 +245,6 @@ public class BluetoothSerial {
 
     /**
      * Get the paired Bluetooth devices of this device.
-     *
-     * @return the paired devices
      */
     public Set<BluetoothDevice> getPairedDevices() {
         return mPairedDevices;
@@ -261,8 +252,6 @@ public class BluetoothSerial {
 
     /**
      * Get the names of the paired Bluetooth devices of this device.
-     *
-     * @return the names of the paired devices
      */
     public String[] getPairedDevicesName() {
         if (mPairedDevices != null) {
@@ -279,8 +268,6 @@ public class BluetoothSerial {
 
     /**
      * Get the MAC addresses of the paired Bluetooth devices of this device.
-     *
-     * @return the MAC addresses of the paired devices
      */
     public String[] getPairedDevicesAddress() {
         if (mPairedDevices != null) {
@@ -296,58 +283,39 @@ public class BluetoothSerial {
     }
 
     /**
-     * Get the name of this device's Bluetooth adapter.
+     * SPP Service listener: will notify about connection changed
      */
-    public String getLocalAdapterName() {
-        if (mAdapter == null) {
-            return "";
+
+    @Override
+    public void onMessageStateChange(@BluetoothSerialState int state) {
+        switch (state) {
+            case BluetoothSerialState.CONNECTED:
+                mListener.onBluetoothDeviceConnected(mConnectedDeviceName, mConnectedDeviceAddress);
+                break;
+            case BluetoothSerialState.CONNECTING:
+                mListener.onConnectingBluetoothDevice();
+                break;
+            case BluetoothSerialState.DISCONNECTED:
+                mListener.onBluetoothDeviceDisconnected();
+                break;
         }
-        return mAdapter.getName();
     }
 
-    /**
-     * Get the MAC address of this device's Bluetooth adapter.
-     */
-    public String getLocalAdapterAddress() {
-        if (mAdapter == null) {
-            return "";
-        }
-        return mAdapter.getAddress();
+    @Override
+    public void onMessageWrite(byte[] bufferWrite, String message) {
+        String messageWrite = new String(bufferWrite);
+        mListener.onBluetoothSerialWrite(bufferWrite, messageWrite);
     }
 
-    private final Handler mHandler = new Handler() {
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-                case MESSAGE_STATE_CHANGE:
-                    switch (msg.arg1) {
-                        case BluetoothSerialState.CONNECTED:
-                            mListener.onBluetoothDeviceConnected(mConnectedDeviceName, mConnectedDeviceAddress);
-                            break;
-                        case BluetoothSerialState.CONNECTING:
-                            mListener.onConnectingBluetoothDevice();
-                            break;
-                        case BluetoothSerialState.DISCONNECTED:
-                            mListener.onBluetoothDeviceDisconnected();
-                            break;
-                    }
-                    break;
-                case MESSAGE_WRITE:
-                    byte[] bufferWrite = (byte[]) msg.obj;
-                    String messageWrite = new String(bufferWrite);
-                    mListener.onBluetoothSerialWrite(bufferWrite, messageWrite);
-                    break;
-                case MESSAGE_READ:
-                    byte[] bufferRead = (byte[]) msg.obj;
-                    String messageRead = new String(bufferRead);
-                    mListener.onBluetoothSerialRead(bufferRead, messageRead);
-                    break;
-                case MESSAGE_DEVICE_INFO:
-                    mConnectedDeviceName = msg.getData().getString(KEY_DEVICE_NAME);
-                    mConnectedDeviceAddress = msg.getData().getString(KEY_DEVICE_ADDRESS);
-                    break;
-            }
-        }
-    };
+    @Override
+    public void onMessageRead(byte[] bufferRead, String message) {
+        String messageRead = new String(bufferRead);
+        mListener.onBluetoothSerialRead(bufferRead, messageRead);
+    }
 
+    @Override
+    public void onDeviceInfo(String deviceName, String deviceAddress) {
+        mConnectedDeviceName = deviceName;
+        mConnectedDeviceAddress = deviceAddress;
+    }
 }
