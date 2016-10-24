@@ -11,7 +11,7 @@
         android:layout_height="wrap_content"
         android:text="Bluetooth Device Name"
         android:textColor="@color/colorDark"
-        android:textSize="@dimen/font_16_sp" />
+        android:textSize="@dimen/font_14_sp" />
 
     <TextView
         android:id="@+id/tv_device_address"
@@ -19,6 +19,6 @@
         android:layout_height="wrap_content"
         android:text="00:00:00:00:00:FF"
         android:textColor="@color/colorLight"
-        android:textSize="@dimen/font_14_sp" />
+        android:textSize="@dimen/font_12_sp" />
 
 </LinearLayout>

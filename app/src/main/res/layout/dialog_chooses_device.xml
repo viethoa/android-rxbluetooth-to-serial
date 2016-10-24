@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/colorBright"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/tv_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/colorChooseBluetoothDeviceTitle"
+        android:gravity="center"
+        android:padding="@dimen/space_16_dp"
+        android:text="CHOOSE DEVICE"
+        android:textColor="@color/colorBright"
+        android:textSize="@dimen/font_16_sp"
+        android:textStyle="bold" />
+
+    <ListView
+        android:id="@+id/lv_devices"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+</LinearLayout>

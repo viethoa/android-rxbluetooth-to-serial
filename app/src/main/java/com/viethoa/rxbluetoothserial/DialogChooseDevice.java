@@ -1,11 +1,14 @@
 package com.viethoa.rxbluetoothserial;
 
+import android.app.Dialog;
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.support.v7.app.AlertDialog;
+import android.text.TextUtils;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
+import android.widget.TextView;
 
 import com.viethoa.rxbluetoothserial.listeners.DialogChooseDeviceListener;
 
@@ -16,19 +19,33 @@ import java.util.Set;
 /**
  * Created by VietHoa on 23/10/2016.
  */
-public class DialogChooseDevice {
+public class DialogChooseDevice extends Dialog implements AdapterView.OnItemClickListener {
 
     private Context mContext;
+    private ListView lvDevices;
+    private TextView tvTitle;
+
+    private String mTitle;
     private DialogChooseDeviceListener mListener;
-    private Set<BluetoothDevice> mDeviceSet;
     private List<BluetoothDevice> mDeviceList;
     private boolean isShowAddress;
-    private String mTitle;
 
     public DialogChooseDevice(Context context) {
+        super(context, R.style.Window_DialogStyle);
         mContext = context;
         isShowAddress = true;
+
+        setCancelable(true);
+        setCanceledOnTouchOutside(true);
+        setContentView(R.layout.dialog_chooses_device);
+
+        tvTitle = (TextView) findViewById(R.id.tv_title);
+        lvDevices = (ListView) findViewById(R.id.lv_devices);
     }
+
+    //----------------------------------------------------------------------------------------------
+    // Properties
+    //----------------------------------------------------------------------------------------------
 
     public void setOnDeviceSelectedListener(DialogChooseDeviceListener listener) {
         mListener = listener;
@@ -38,12 +55,7 @@ public class DialogChooseDevice {
         mTitle = title;
     }
 
-    public void setTitle(int resId) {
-        mTitle = mContext.getString(resId);
-    }
-
     public void setDevices(Set<BluetoothDevice> devices) {
-        mDeviceSet = devices;
         if (devices == null || devices.size() <= 0) {
             return;
         }
@@ -58,24 +70,34 @@ public class DialogChooseDevice {
         isShowAddress = showAddress;
     }
 
-    public void show() {
-        final AlertDialog dialog = new AlertDialog.Builder(mContext)
-                .setTitle(mTitle)
-                .setAdapter(new BluetoothDeviceAdapter(mContext, mDeviceList, isShowAddress), null)
-                .create();
-
-        final ListView listView = dialog.getListView();
-        if (listView != null) {
-            listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                @Override
-                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                    mListener.onBluetoothDeviceSelected(mDeviceList.get(position));
-                    dialog.cancel();
-                }
-            });
-        }
-
-        dialog.show();
+    @Override
+    public void setTitle(int resId) {
+        mTitle = mContext.getString(resId);
     }
 
+    @Override
+    public void show() {
+        if (!TextUtils.isEmpty(mTitle)) {
+            tvTitle.setText(mTitle);
+        }
+
+        BluetoothDeviceAdapter adapter = new BluetoothDeviceAdapter(mContext, mDeviceList, isShowAddress);
+        lvDevices.setAdapter(adapter);
+        super.show();
+    }
+
+    @Override
+    public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
+        if (mDeviceList == null || mDeviceList.size() <= 0) {
+            return;
+        }
+        if (position < 0 || position >= mDeviceList.size()) {
+            return;
+        }
+        if (mListener == null) {
+            return;
+        }
+
+        mListener.onBluetoothDeviceSelected(mDeviceList.get(position));
+    }
 }

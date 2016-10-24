@@ -2,6 +2,7 @@
 
     <dimen name="space_16_dp">16dp</dimen>
 
+    <dimen name="font_12_sp">12sp</dimen>
     <dimen name="font_14_sp">14sp</dimen>
     <dimen name="font_16_sp">16sp</dimen>
 </resources>

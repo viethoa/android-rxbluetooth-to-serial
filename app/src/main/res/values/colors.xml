@@ -4,6 +4,8 @@
     <color name="colorPrimaryDark">#303F9F</color>
     <color name="colorAccent">#FF4081</color>
 
+    <color name="colorChooseBluetoothDeviceTitle">#3F51B5</color>
+    <color name="colorBright">#FFFFFF</color>
     <color name="colorLight">#999999</color>
     <color name="colorDark">#444444</color>
 </resources>
