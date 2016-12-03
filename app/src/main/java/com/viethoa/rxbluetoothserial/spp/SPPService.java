@@ -2,8 +2,6 @@ package com.viethoa.rxbluetoothserial.spp;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
-import android.os.Bundle;
-import android.os.Message;
 import android.util.Log;
 
 import com.viethoa.rxbluetoothserial.BluetoothSerialState;
@@ -12,6 +10,7 @@ import com.viethoa.rxbluetoothserial.cores.Logger;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.util.UUID;
@@ -28,10 +27,10 @@ public class SPPService {
     private int mCurrentState;
     private ConnectThread mConnectThread;
     private ConnectedThread mConnectedThread;
-    private SPPServiceListener mSppServiceListener;
+    private WeakReference<SPPServiceListener> sppServiceListener;
 
     public SPPService(SPPServiceListener listener) {
-        mSppServiceListener = listener;
+        sppServiceListener = new WeakReference<>(listener);
         mCurrentState = BluetoothSerialState.DISCONNECTED;
     }
 
@@ -88,7 +87,9 @@ public class SPPService {
         Logger.d(TAG, "setState() " + mCurrentState + " -> " + state);
 
         mCurrentState = state;
-        mSppServiceListener.onMessageStateChange(state);
+        if (sppServiceListener != null && sppServiceListener.get() !=null) {
+            sppServiceListener.get().onMessageStateChange(state);
+        }
     }
 
     private synchronized void resetThreads() {
@@ -176,7 +177,6 @@ public class SPPService {
             mConnectedThread.start();
 
             setState(BluetoothSerialState.CONNECTED);
-            mSppServiceListener.onDeviceInfo(device);
         }
 
         void cancel() {
@@ -222,7 +222,7 @@ public class SPPService {
                 try {
                     bytes = mInputStream.read(data);
                     String message = new String(data, 0, bytes, Charset.forName("ISO-8859-1"));
-                    mSppServiceListener.onMessageRead(data, message);
+                    sendReadMessage(data, message);
                 } catch (IOException e) {
                     Logger.e(TAG, e.getMessage());
                     cancel();
@@ -240,9 +240,21 @@ public class SPPService {
             try {
                 mOutputStream.write(data);
                 String message = new String(data, 0, data.length, Charset.forName("ISO-8859-1"));
-                mSppServiceListener.onMessageWrite(data, message);
+                sendWroteMessage(data, message);
             } catch (IOException e) {
                 Logger.e(TAG, e.getMessage());
+            }
+        }
+
+        private void sendReadMessage(byte[] data, String message) {
+            if (sppServiceListener != null && sppServiceListener.get() != null) {
+                sppServiceListener.get().onMessageRead(data, message);
+            }
+        }
+
+        private void sendWroteMessage(byte[] data, String message) {
+            if (sppServiceListener != null && sppServiceListener.get() != null) {
+                sppServiceListener.get().onMessageWrite(data, message);
             }
         }
 
