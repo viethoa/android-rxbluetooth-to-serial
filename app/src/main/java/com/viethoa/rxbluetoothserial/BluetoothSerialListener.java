@@ -13,9 +13,9 @@ public interface BluetoothSerialListener {
     void onBluetoothNotSupported();
 
     /**
-     * This device's Bluetooth adapter is turned off.
+     * Bluetooth doesn't turning on.
      */
-    void onBluetoothDisabled();
+    void onRequestTurnOnBluetooth();
 
     /**
      * Disconnected from a remote Bluetooth device.

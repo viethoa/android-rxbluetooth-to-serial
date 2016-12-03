@@ -2,6 +2,9 @@ package com.viethoa.rxbluetoothserial.spp;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.os.Bundle;
+import android.os.Message;
+import android.util.Log;
 
 import com.viethoa.rxbluetoothserial.BluetoothSerialState;
 import com.viethoa.rxbluetoothserial.cores.Logger;
@@ -9,6 +12,7 @@ import com.viethoa.rxbluetoothserial.cores.Logger;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.util.UUID;
 
@@ -34,6 +38,11 @@ public class SPPService {
     //----------------------------------------------------------------------------------------------
     // Properties
     //----------------------------------------------------------------------------------------------
+
+    public synchronized void resetConnection() {
+        Log.d(TAG, "resetConnection()");
+        resetThreads();
+    }
 
     public synchronized void connect(BluetoothDevice device) {
         Logger.d(TAG, String.format("connect to device: %s", device));
@@ -102,7 +111,7 @@ public class SPPService {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Threads
+    // Connect threads
     //----------------------------------------------------------------------------------------------
 
     private class ConnectThread extends Thread {
@@ -111,22 +120,28 @@ public class SPPService {
         private final BluetoothDevice mDevice;
 
         ConnectThread(BluetoothDevice device) {
-            BluetoothSocket socket = null;
+            Log.d(TAG, "ConnectThread(" + device + ")");
 
+            BluetoothSocket tempSocket = null;
             try {
-                Logger.d(TAG, String.format("Connect to device: %s", device));
-                socket = device.createRfcommSocketToServiceRecord(UUID_SPP);
-            } catch (IOException e) {
-                Logger.e(TAG, e.getMessage());
+                Method m = device.getClass().getMethod("createRfcommSocket", new Class[]{int.class});
+                tempSocket = (BluetoothSocket) m.invoke(device, Integer.valueOf(1));
+            } catch (Exception e1) {
+                Log.e(TAG, "Failed to create a socket with reflection!");
                 try {
-                    socket = device.createInsecureRfcommSocketToServiceRecord(UUID_SPP);
-                } catch (IOException ex) {
-                    Logger.e(TAG, ex.getMessage());
+                    tempSocket = device.createRfcommSocketToServiceRecord(UUID_SPP);
+                } catch (Exception e2) {
+                    Log.e(TAG, "Failed to create a secure socket!");
+                    try {
+                        tempSocket = device.createInsecureRfcommSocketToServiceRecord(UUID_SPP);
+                    } catch (Exception e3) {
+                        Log.e(TAG, "Failed to create an insecure socket!");
+                    }
                 }
             }
 
             this.mDevice = device;
-            this.mSocket = socket;
+            this.mSocket = tempSocket;
         }
 
         public void run() {
@@ -138,15 +153,16 @@ public class SPPService {
 
             try {
                 mSocket.connect();
-            } catch (IOException e) {
-                Logger.e(TAG, e.getMessage());
-                cancel();
-                disconnect();
-                return;
-            }
-
-            synchronized (SPPService.this) {
-                mConnectThread = null;
+            } catch (Exception e) {
+                Log.e(TAG, "" + e.getMessage());
+                try {
+                    Log.d(TAG, "trying to reconnect again");
+                    mSocket.connect();
+                } catch (Exception ex) {
+                    cancel();
+                    disconnect();
+                    return;
+                }
             }
 
             connected(mSocket, mDevice);
@@ -155,7 +171,7 @@ public class SPPService {
         synchronized void connected(BluetoothSocket socket, BluetoothDevice device) {
             Logger.d(TAG, String.format("Connected to %s", device));
 
-            resetThreads();
+            resetConnectedThread();
             mConnectedThread = new ConnectedThread(socket);
             mConnectedThread.start();
 

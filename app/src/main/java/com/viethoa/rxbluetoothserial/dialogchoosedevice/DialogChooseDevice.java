@@ -46,7 +46,7 @@ public class DialogChooseDevice extends Dialog implements AdapterView.OnItemClic
     // Properties
     //----------------------------------------------------------------------------------------------
 
-    public void setOnDeviceSelectedListener(DialogChooseDeviceListener listener) {
+    public void setListener(DialogChooseDeviceListener listener) {
         mListener = listener;
     }
 

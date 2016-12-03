@@ -29,15 +29,16 @@ public class BluetoothSerial implements SPPServiceListener {
     private BluetoothDevice mConnectedDevice;
     private BluetoothSerialListener mListener;
 
-    /**
-     * Init
-     */
     public BluetoothSerial(Context context, BluetoothSerialListener listener) {
         mAdapter = getAdapter(context);
         mListener = listener;
     }
 
-    static BluetoothAdapter getAdapter(Context context) {
+    //----------------------------------------------------------------------------------------------
+    // Settings
+    //----------------------------------------------------------------------------------------------
+
+    private BluetoothAdapter getAdapter(Context context) {
         BluetoothAdapter bluetoothAdapter = null;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
             BluetoothManager bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
@@ -49,53 +50,13 @@ public class BluetoothSerial implements SPPServiceListener {
         return bluetoothAdapter;
     }
 
-    /**
-     * Discover bluetooth devices
-     */
-    public void startDiscover() {
-        if (mAdapter != null) {
-            mAdapter.startDiscovery();
-        }
-    }
-
-    /**
-     * Stop discover bluetooth devices
-     */
-    public void stopDiscover() {
-        if (mAdapter != null && mAdapter.isDiscovering()) {
-            mAdapter.cancelDiscovery();
-        }
-    }
-
-    /**
-     * Check the presence of a Bluetooth adapter on this device and set up the Bluetooth Serial Port Profile (SPP) service.
-     */
-    public void setup() {
-        if (!checkBluetooth()) {
-            return;
-        }
-
-        Log.d(TAG, "Create SPPService");
-        mPairedDevices = mAdapter.getBondedDevices();
-        if (mService == null) {
-            mService = new SPPService(this);
-        }
-    }
-
-    /**
-     * Return true if Bluetooth is currently enabled and ready for use.
-     */
-    public boolean isBluetoothEnabled() {
-        return mAdapter.isEnabled();
-    }
-
-    public boolean checkBluetooth() {
+    private boolean checkBluetooth() {
         if (mAdapter == null) {
             mListener.onBluetoothNotSupported();
             return false;
         } else {
             if (!mAdapter.isEnabled()) {
-                mListener.onBluetoothDisabled();
+                mListener.onRequestTurnOnBluetooth();
                 return false;
             } else {
                 return true;
@@ -103,20 +64,41 @@ public class BluetoothSerial implements SPPServiceListener {
         }
     }
 
-    /**
-     * Open a Bluetooth serial port and get ready to establish a connection with a remote device.
-     */
-    //public void start() {
-    //   if (mService != null && mService.getState() == STATE_DISCONNECTED) {
-    //       mService.disconnect();
-    //   }
-    //}
+    //----------------------------------------------------------------------------------------------
+    // Properties
+    //----------------------------------------------------------------------------------------------
 
-    /**
-     * Connect to a remote Bluetooth device with the specified MAC address.
-     *
-     * @param address The MAC address of a remote Bluetooth device.
-     */
+    public void setup() {
+        if (!checkBluetooth()) {
+            return;
+        }
+
+        if (mPairedDevices == null) {
+            Log.d(TAG, "Create mPairedDevices");
+            mPairedDevices = mAdapter.getBondedDevices();
+        }
+        if (mService == null) {
+            Log.d(TAG, "Create mService");
+            mService = new SPPService(this);
+        }
+    }
+
+    public void startDiscover() {
+        if (mAdapter != null) {
+            mAdapter.startDiscovery();
+        }
+    }
+
+    public void stopDiscover() {
+        if (mAdapter != null) {
+            mAdapter.cancelDiscovery();
+        }
+    }
+
+    public boolean isBluetoothEnabled() {
+        return mAdapter.isEnabled();
+    }
+
     public void connect(String address) {
         try {
             android.bluetooth.BluetoothDevice device = mAdapter.getRemoteDevice(address);
@@ -137,34 +119,22 @@ public class BluetoothSerial implements SPPServiceListener {
         }
     }
 
-    /**
-     * Connect to a remote Bluetooth device.
-     *
-     * @param device A remote Bluetooth device.
-     */
     public void connect(android.bluetooth.BluetoothDevice device) {
+        // Always stop discover because it will slow down connection
+        stopDiscover();
+
         if (mService != null) {
+            mService.resetConnection();
             mService.connect(device);
         }
     }
 
-    /**
-     * Write the specified bytes to the Bluetooth serial port.
-     *
-     * @param data The data to be written.
-     */
     public void write(byte[] data) {
         if (mService.getState() == BluetoothSerialState.CONNECTED) {
             mService.write(data);
         }
     }
 
-    /**
-     * Write the specified bytes to the Bluetooth serial port.
-     *
-     * @param data The data to be written.
-     * @param crlf Set true to end the data with a newline (\r\n).
-     */
     public void write(String data, boolean crlf) {
         write(data.getBytes(Charset.forName("ISO-8859-1")));
         if (crlf) {
@@ -172,28 +142,15 @@ public class BluetoothSerial implements SPPServiceListener {
         }
     }
 
-    /**
-     * Write the specified string to the Bluetooth serial port.
-     *
-     * @param data The data to be written.
-     */
     public void write(String data) {
         write(data.getBytes(Charset.forName("ISO-8859-1")));
     }
 
-    /**
-     * Write the specified string ended with a new line (\r\n) to the Bluetooth serial port.
-     *
-     * @param data The data to be written.
-     */
     public void writeln(String data) {
         write(data.getBytes(Charset.forName("ISO-8859-1")));
         write(CRLF);
     }
 
-    /**
-     * Disconnect from the remote Bluetooth device and close the active Bluetooth serial port.
-     */
     public void stop() {
         if (mService != null) {
             mService.disconnect();
@@ -205,20 +162,10 @@ public class BluetoothSerial implements SPPServiceListener {
         mConnectedDevice = null;
     }
 
-    /**
-     * Get the current state of the Bluetooth serial port.
-     *
-     * @return the current state
-     */
     public int getState() {
         return mService.getState();
     }
 
-    /**
-     * Return true if a connection to a remote Bluetooth device is established.
-     *
-     * @return true if connected to a device
-     */
     public boolean isConnected() {
         if (mService == null) {
             return false;
@@ -227,9 +174,6 @@ public class BluetoothSerial implements SPPServiceListener {
         return (mService.getState() == BluetoothSerialState.CONNECTED);
     }
 
-    /**
-     * Get connected remote bluetooth device name.
-     */
     public String getConnectedDeviceName() {
         if (mConnectedDevice == null) {
             return null;
@@ -237,9 +181,6 @@ public class BluetoothSerial implements SPPServiceListener {
         return mConnectedDevice.getName();
     }
 
-    /**
-     * Get the MAC address of the connected remote Bluetooth device.
-     */
     public String getConnectedDeviceAddress() {
         if (mConnectedDevice == null) {
             return null;
@@ -247,16 +188,10 @@ public class BluetoothSerial implements SPPServiceListener {
         return mConnectedDevice.getAddress();
     }
 
-    /**
-     * Get the paired Bluetooth devices of this device.
-     */
     public Set<android.bluetooth.BluetoothDevice> getPairedDevices() {
         return mPairedDevices;
     }
 
-    /**
-     * Get the names of the paired Bluetooth devices of this device.
-     */
     public String[] getPairedDevicesName() {
         if (mPairedDevices != null) {
             String[] name = new String[mPairedDevices.size()];
@@ -270,9 +205,6 @@ public class BluetoothSerial implements SPPServiceListener {
         return null;
     }
 
-    /**
-     * Get the MAC addresses of the paired Bluetooth devices of this device.
-     */
     public String[] getPairedDevicesAddress() {
         if (mPairedDevices != null) {
             String[] address = new String[mPairedDevices.size()];
@@ -286,9 +218,10 @@ public class BluetoothSerial implements SPPServiceListener {
         return null;
     }
 
-    /**
-     * SPP Service listener: will notify about connection changed
-     */
+    //----------------------------------------------------------------------------------------------
+    // SPP Service listener: will notify about connection changed
+    //----------------------------------------------------------------------------------------------
+
     @Override
     public void onMessageStateChange(@BluetoothSerialState int state) {
         switch (state) {

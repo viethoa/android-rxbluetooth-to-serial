@@ -5,7 +5,19 @@
     android:layout_height="match_parent">
 
     <TextView
+        android:id="@+id/tv_bluetooth_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Hello World!" />
+        android:layout_centerInParent="true"
+        android:padding="20dp"
+        android:text="Disconnected" />
+
+    <Button
+        android:id="@+id/btn_scan"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/tv_bluetooth_status"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="30dp"
+        android:text="Discover" />
 </RelativeLayout>
