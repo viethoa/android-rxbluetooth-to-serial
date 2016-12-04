@@ -7,9 +7,6 @@ import android.content.Context;
 import android.os.Build;
 import android.util.Log;
 
-import com.viethoa.rxbluetoothserial.spp.SPPServiceListener;
-import com.viethoa.rxbluetoothserial.spp.SPPService;
-
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.util.Set;
@@ -95,8 +92,14 @@ public class BluetoothSerial implements SPPServiceListener {
         }
     }
 
-    public boolean isBluetoothEnabled() {
-        return mAdapter.isEnabled();
+    public void connect(android.bluetooth.BluetoothDevice device) {
+        // Always stop discover because it will slow down connection
+        stopDiscover();
+
+        if (mService != null) {
+            mService.resetConnection();
+            mService.connect(device);
+        }
     }
 
     public void connect(String address) {
@@ -116,16 +119,6 @@ public class BluetoothSerial implements SPPServiceListener {
             }
         } catch (Exception e) {
             Log.e(TAG, "BluetoothDevice not found!");
-        }
-    }
-
-    public void connect(android.bluetooth.BluetoothDevice device) {
-        // Always stop discover because it will slow down connection
-        stopDiscover();
-
-        if (mService != null) {
-            mService.resetConnection();
-            mService.connect(device);
         }
     }
 
@@ -162,8 +155,16 @@ public class BluetoothSerial implements SPPServiceListener {
         mConnectedDevice = null;
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Info properties
+    //----------------------------------------------------------------------------------------------
+
     public int getState() {
         return mService.getState();
+    }
+
+    public boolean isBluetoothEnabled() {
+        return mAdapter.isEnabled();
     }
 
     public boolean isConnected() {
@@ -172,20 +173,6 @@ public class BluetoothSerial implements SPPServiceListener {
         }
 
         return (mService.getState() == BluetoothSerialState.CONNECTED);
-    }
-
-    public String getConnectedDeviceName() {
-        if (mConnectedDevice == null) {
-            return null;
-        }
-        return mConnectedDevice.getName();
-    }
-
-    public String getConnectedDeviceAddress() {
-        if (mConnectedDevice == null) {
-            return null;
-        }
-        return mConnectedDevice.getAddress();
     }
 
     public Set<android.bluetooth.BluetoothDevice> getPairedDevices() {
@@ -216,6 +203,20 @@ public class BluetoothSerial implements SPPServiceListener {
             return address;
         }
         return null;
+    }
+
+    public String getConnectedDeviceName() {
+        if (mConnectedDevice == null) {
+            return null;
+        }
+        return mConnectedDevice.getName();
+    }
+
+    public String getConnectedDeviceAddress() {
+        if (mConnectedDevice == null) {
+            return null;
+        }
+        return mConnectedDevice.getAddress();
     }
 
     //----------------------------------------------------------------------------------------------
