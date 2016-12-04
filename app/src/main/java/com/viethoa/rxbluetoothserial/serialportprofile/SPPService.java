@@ -1,4 +1,4 @@
-package com.viethoa.rxbluetoothserial.spp;
+package com.viethoa.rxbluetoothserial.serialportprofile;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
@@ -24,14 +24,14 @@ public class SPPService {
     private static final UUID UUID_SPP = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
     @BluetoothSerialState
-    private int mCurrentState;
-    private ConnectThread mConnectThread;
-    private ConnectedThread mConnectedThread;
+    private int currentState;
+    private ConnectThread connectThread;
+    private ConnectedThread connectedThread;
     private WeakReference<SPPServiceListener> sppServiceListener;
 
     public SPPService(SPPServiceListener listener) {
         sppServiceListener = new WeakReference<>(listener);
-        mCurrentState = BluetoothSerialState.DISCONNECTED;
+        currentState = BluetoothSerialState.DISCONNECTED;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -45,16 +45,24 @@ public class SPPService {
 
     public synchronized void connect(BluetoothDevice device) {
         Logger.d(TAG, String.format("connect to device: %s", device));
-        if (mCurrentState == BluetoothSerialState.CONNECTING) {
-            resetConnectThread();
-        }
-        if (mCurrentState == BluetoothSerialState.CONNECTED) {
-            resetConnectedThread();
-        }
 
-        mConnectThread = new ConnectThread(device);
-        mConnectThread.start();
+        resetThreads();
+        connectThread = new ConnectThread(device);
+        connectThread.start();
         setState(BluetoothSerialState.CONNECTING);
+    }
+
+    private synchronized void connected(BluetoothSocket socket, BluetoothDevice device) {
+        Logger.d(TAG, String.format("Connected to %s", device));
+
+        resetConnectedThread();
+        connectedThread = new ConnectedThread(socket);
+        connectedThread.start();
+
+        setState(BluetoothSerialState.CONNECTED);
+        if (sppServiceListener != null && sppServiceListener.get() != null) {
+            sppServiceListener.get().onDeviceInfo(device);
+        }
     }
 
     public synchronized void disconnect() {
@@ -66,8 +74,8 @@ public class SPPService {
     public synchronized void write(byte[] data) {
         ConnectedThread connectedThread = null;
         synchronized (this) {
-            if (mCurrentState == BluetoothSerialState.CONNECTED) {
-                connectedThread = mConnectedThread;
+            if (currentState == BluetoothSerialState.CONNECTED) {
+                connectedThread = this.connectedThread;
             }
         }
         if (connectedThread != null) {
@@ -76,7 +84,7 @@ public class SPPService {
     }
 
     public synchronized int getState() {
-        return mCurrentState;
+        return currentState;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -84,10 +92,10 @@ public class SPPService {
     //----------------------------------------------------------------------------------------------
 
     private synchronized void setState(@BluetoothSerialState int state) {
-        Logger.d(TAG, "setState() " + mCurrentState + " -> " + state);
+        Logger.d(TAG, "setState() " + currentState + " -> " + state);
 
-        mCurrentState = state;
-        if (sppServiceListener != null && sppServiceListener.get() !=null) {
+        currentState = state;
+        if (sppServiceListener != null && sppServiceListener.get() != null) {
             sppServiceListener.get().onMessageStateChange(state);
         }
     }
@@ -98,16 +106,16 @@ public class SPPService {
     }
 
     private synchronized void resetConnectThread() {
-        if (mConnectThread != null) {
-            mConnectThread.cancel();
-            mConnectThread = null;
+        if (connectThread != null) {
+            connectThread.cancel();
+            connectThread = null;
         }
     }
 
     private synchronized void resetConnectedThread() {
-        if (mConnectedThread != null) {
-            mConnectedThread.cancel();
-            mConnectedThread = null;
+        if (connectedThread != null) {
+            connectedThread.cancel();
+            connectedThread = null;
         }
     }
 
@@ -117,8 +125,8 @@ public class SPPService {
 
     private class ConnectThread extends Thread {
 
-        private final BluetoothSocket mSocket;
-        private final BluetoothDevice mDevice;
+        private final BluetoothSocket socket;
+        private final BluetoothDevice device;
 
         ConnectThread(BluetoothDevice device) {
             Log.d(TAG, "ConnectThread(" + device + ")");
@@ -141,24 +149,24 @@ public class SPPService {
                 }
             }
 
-            this.mDevice = device;
-            this.mSocket = tempSocket;
+            this.device = device;
+            this.socket = tempSocket;
         }
 
         public void run() {
-            if (mDevice == null || mSocket == null) {
+            if (device == null || socket == null) {
                 cancel();
                 disconnect();
                 return;
             }
 
             try {
-                mSocket.connect();
+                socket.connect();
             } catch (Exception e) {
                 Log.e(TAG, "" + e.getMessage());
                 try {
                     Log.d(TAG, "trying to reconnect again");
-                    mSocket.connect();
+                    socket.connect();
                 } catch (Exception ex) {
                     cancel();
                     disconnect();
@@ -166,25 +174,15 @@ public class SPPService {
                 }
             }
 
-            connected(mSocket, mDevice);
-        }
-
-        synchronized void connected(BluetoothSocket socket, BluetoothDevice device) {
-            Logger.d(TAG, String.format("Connected to %s", device));
-
-            resetConnectedThread();
-            mConnectedThread = new ConnectedThread(socket);
-            mConnectedThread.start();
-
-            setState(BluetoothSerialState.CONNECTED);
+            connected(socket, device);
         }
 
         void cancel() {
             Logger.d(TAG, "ConnectThread -> cancel");
 
             try {
-                if (mSocket != null) {
-                    mSocket.close();
+                if (socket != null) {
+                    socket.close();
                 }
             } catch (IOException e) {
                 Logger.e(TAG, e.getMessage());
@@ -194,9 +192,9 @@ public class SPPService {
 
     private class ConnectedThread extends Thread {
 
-        private final BluetoothSocket mSocket;
-        private final InputStream mInputStream;
-        private final OutputStream mOutputStream;
+        private final BluetoothSocket socket;
+        private final InputStream inputStream;
+        private final OutputStream outputStream;
 
         ConnectedThread(BluetoothSocket socket) {
             InputStream tempInputStream = null;
@@ -209,9 +207,9 @@ public class SPPService {
                 Logger.e(TAG, e.getMessage());
             }
 
-            this.mSocket = socket;
-            this.mInputStream = tempInputStream;
-            this.mOutputStream = tempOutputStream;
+            this.socket = socket;
+            this.inputStream = tempInputStream;
+            this.outputStream = tempOutputStream;
         }
 
         public void run() {
@@ -220,7 +218,7 @@ public class SPPService {
 
             while (true) {
                 try {
-                    bytes = mInputStream.read(data);
+                    bytes = inputStream.read(data);
                     String message = new String(data, 0, bytes, Charset.forName("ISO-8859-1"));
                     sendReadMessage(data, message);
                 } catch (IOException e) {
@@ -238,7 +236,7 @@ public class SPPService {
             }
 
             try {
-                mOutputStream.write(data);
+                outputStream.write(data);
                 String message = new String(data, 0, data.length, Charset.forName("ISO-8859-1"));
                 sendWroteMessage(data, message);
             } catch (IOException e) {
@@ -261,8 +259,8 @@ public class SPPService {
         void cancel() {
             Logger.d(TAG, "ConnectedThread -> cancel");
             try {
-                if (mSocket != null) {
-                    mSocket.close();
+                if (socket != null) {
+                    socket.close();
                 }
             } catch (IOException e) {
                 Logger.e(TAG, e.getMessage());

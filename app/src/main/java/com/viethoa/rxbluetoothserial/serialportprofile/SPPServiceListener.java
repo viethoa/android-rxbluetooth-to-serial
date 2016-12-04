@@ -1,4 +1,4 @@
-package com.viethoa.rxbluetoothserial.spp;
+package com.viethoa.rxbluetoothserial.serialportprofile;
 
 import android.bluetooth.BluetoothDevice;
 
